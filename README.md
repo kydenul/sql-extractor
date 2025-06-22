@@ -155,7 +155,7 @@ type TableInfo struct {
 
 ## 作者
 
-- [@kydance](https://github.com/kydance)
+- [@kydenul](https://github.com/kydenul)
 
 ## 致谢
 
