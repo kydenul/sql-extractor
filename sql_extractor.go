@@ -4,8 +4,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 
-	"github.com/kydance/sql-extractor/internal/extract"
-	"github.com/kydance/sql-extractor/internal/models"
+	"github.com/kydenul/sql-extractor/internal/extract"
+	"github.com/kydenul/sql-extractor/internal/models"
 )
 
 // Extractor is a struct that holds the raw SQL, templatized SQL, operation type,

@@ -12,7 +12,7 @@ import (
 	"github.com/pingcap/tidb/pkg/parser/ast"
 	"github.com/pingcap/tidb/pkg/parser/test_driver"
 
-	"github.com/kydance/sql-extractor/internal/models"
+	"github.com/kydenul/sql-extractor/internal/models"
 )
 
 const (

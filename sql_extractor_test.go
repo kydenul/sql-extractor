@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/kydance/sql-extractor/internal/models"
+	"github.com/kydenul/sql-extractor/internal/models"
 )
 
 func TestExtractor_RawSQL(t *testing.T) {

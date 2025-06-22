@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	sqlextractor "github.com/kydance/sql-extractor"
+	sqlextractor "github.com/kydenul/sql-extractor"
 )
 
 func main() {
