@@ -152,7 +152,7 @@ func TestTemplatizeSQL_in(t *testing.T) {
 	template, tableInfos, params, op, err := parser.Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"SELECT * FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?)"},
+		[]string{"SELECT * FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?)"},
 		template,
 	)
 	as.Equal(10, len(params[0]))
@@ -166,7 +166,7 @@ func TestTemplatizeSQL_in(t *testing.T) {
 	template, tableInfos, params, op, err = parser.Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"SELECT * FROM users WHERE name eq ? and uuid NOT IN (?, ?)"},
+		[]string{"SELECT * FROM users WHERE name eq ? and uuid NOT IN (?)"},
 		template,
 	)
 	as.Equal(3, len(params[0]))
@@ -202,6 +202,57 @@ func TestTemplatizeSQL_in(t *testing.T) {
 		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+
+	// IN (v1)
+	sql = "SELECT * FROM users WHERE id IN (1)"
+	template, tableInfos, params, op, err = parser.Extract(sql)
+	as.Equal(nil, err)
+	as.Equal(
+		[]string{"SELECT * FROM users WHERE id IN (?)"},
+		template,
+	)
+	as.Equal(1, len(params[0]))
+	as.Equal([][]*models.TableInfo{{
+		models.NewTableInfo("", "users", "", "users"),
+	}}, tableInfos)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+
+	// IN ('v1', 'v2')
+	sql = "SELECT * FROM users WHERE name IN ('Alice', 'Bob')"
+	template, tableInfos, params, op, err = parser.Extract(sql)
+	as.Equal(nil, err)
+	as.Equal(
+		[]string{"SELECT * FROM users WHERE name IN (?)"},
+		template,
+	)
+	as.Equal(2, len(params[0]))
+	as.Equal([][]*models.TableInfo{{
+		models.NewTableInfo("", "users", "", "users"),
+	}}, tableInfos)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+
+	// NOT IN (v1)
+	sql = "SELECT * FROM users WHERE id NOT IN (1)"
+	template, tableInfos, params, op, err = parser.Extract(sql)
+	as.Equal(nil, err)
+	as.Equal(
+		[]string{"SELECT * FROM users WHERE id NOT IN (?)"},
+		template,
+	)
+	as.Equal(1, len(params[0]))
+	as.Equal([][]*models.TableInfo{{
+		models.NewTableInfo("", "users", "", "users"),
+	}}, tableInfos)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+
+	// IN with empty list (should be an error or specific handling)
+	sql = "SELECT * FROM users WHERE id IN ()"
+	template, tableInfos, params, op, err = parser.Extract(sql)
+	as.NotNil(err) // Expecting an error for empty IN list
+	as.Equal([]string(nil), template)
+	as.Equal(0, len(params))
+	as.Equal(0, len(tableInfos))
+	as.Equal([]models.SQLOpType(nil), op)
 }
 
 func TestTemplatizeSQL_like(t *testing.T) {
@@ -214,7 +265,7 @@ func TestTemplatizeSQL_like(t *testing.T) {
 	template, tableInfos, params, op, err := parser.Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"SELECT * FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ?"},
+		[]string{"SELECT * FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?) and name LIKE ?"},
 		template,
 	)
 	as.Equal(11, len(params[0]))
@@ -228,7 +279,7 @@ func TestTemplatizeSQL_like(t *testing.T) {
 	template, tableInfos, params, op, err = parser.Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"SELECT * FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ?"},
+		[]string{"SELECT * FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?) and name LIKE ?"},
 		template,
 	)
 	as.Equal(11, len(params[0]))
@@ -242,7 +293,7 @@ func TestTemplatizeSQL_like(t *testing.T) {
 	template, tableInfos, params, op, err = parser.Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"SELECT * FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ?"},
+		[]string{"SELECT * FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?) and name LIKE ?"},
 		template,
 	)
 	as.Equal(11, len(params[0]))
@@ -256,7 +307,7 @@ func TestTemplatizeSQL_like(t *testing.T) {
 	template, tableInfos, params, op, err = parser.Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"SELECT * FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ?"},
+		[]string{"SELECT * FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?) and name LIKE ?"},
 		template,
 	)
 	as.Equal(11, len(params[0]))
@@ -270,7 +321,7 @@ func TestTemplatizeSQL_like(t *testing.T) {
 	template, tableInfos, params, op, err = parser.Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"SELECT * FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ?"},
+		[]string{"SELECT * FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?) and name LIKE ?"},
 		template,
 	)
 	as.Equal(11, len(params[0]))
@@ -284,7 +335,7 @@ func TestTemplatizeSQL_like(t *testing.T) {
 	template, tableInfos, params, op, err = parser.Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"SELECT * FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name NOT LIKE ?"},
+		[]string{"SELECT * FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?) and name NOT LIKE ?"},
 		template,
 	)
 	as.Equal(11, len(params[0]))
@@ -318,7 +369,7 @@ func TestTemplatizeSQL_GroupBy(t *testing.T) {
 	template, tableInfos, params, op, err := parser.Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"SELECT * FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ? GROUP BY name"},
+		[]string{"SELECT * FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?) and name LIKE ? GROUP BY name"},
 		template,
 	)
 	as.Equal(11, len(params[0]))
@@ -332,7 +383,7 @@ func TestTemplatizeSQL_GroupBy(t *testing.T) {
 	template, tableInfos, params, op, err = parser.Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"SELECT * FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ? GROUP BY name, age"},
+		[]string{"SELECT * FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?) and name LIKE ? GROUP BY name, age"},
 		template,
 	)
 	as.Equal(11, len(params[0]))
@@ -365,7 +416,7 @@ func TestTemplatizeSQL_OrderBy(t *testing.T) {
 	template, tableInfos, params, op, err := parser.Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"SELECT * FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ? ORDER BY name"},
+		[]string{"SELECT * FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?) and name LIKE ? ORDER BY name"},
 		template,
 	)
 	as.Equal(11, len(params[0]))
@@ -393,7 +444,7 @@ func TestTemplatizeSQL_OrderBy(t *testing.T) {
 	template, tableInfos, params, op, err = parser.Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"SELECT * FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ? ORDER BY name, age"},
+		[]string{"SELECT * FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?) and name LIKE ? ORDER BY name, age"},
 		template,
 	)
 	as.Equal(11, len(params[0]))
@@ -407,7 +458,7 @@ func TestTemplatizeSQL_OrderBy(t *testing.T) {
 	template, tableInfos, params, op, err = parser.Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"SELECT * FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ? ORDER BY name DESC"},
+		[]string{"SELECT * FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?) and name LIKE ? ORDER BY name DESC"},
 		template,
 	)
 	as.Equal(11, len(params[0]))
@@ -421,7 +472,7 @@ func TestTemplatizeSQL_OrderBy(t *testing.T) {
 	template, tableInfos, params, op, err = parser.Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"SELECT * FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ? ORDER BY name, age DESC"},
+		[]string{"SELECT * FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?) and name LIKE ? ORDER BY name, age DESC"},
 		template,
 	)
 	as.Equal(11, len(params[0]))
@@ -435,7 +486,7 @@ func TestTemplatizeSQL_OrderBy(t *testing.T) {
 	template, tableInfos, params, op, err = parser.Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"SELECT * FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ? ORDER BY name DESC, age"},
+		[]string{"SELECT * FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?) and name LIKE ? ORDER BY name DESC, age"},
 		template,
 	)
 	as.Equal(11, len(params[0]))
@@ -454,7 +505,7 @@ func TestTemplatizeSQL_AggregateFunc_AS(t *testing.T) {
 	template, tableInfos, params, op, err := NewExtractor().Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"SELECT count(1) FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ? GROUP BY name, age"},
+		[]string{"SELECT count(1) FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?) and name LIKE ? GROUP BY name, age"},
 		template,
 	)
 	as.Equal(11, len(params[0]))
@@ -468,7 +519,7 @@ func TestTemplatizeSQL_AggregateFunc_AS(t *testing.T) {
 	template, tableInfos, params, op, err = NewExtractor().Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"SELECT count(DISTINCT age) FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ? GROUP BY name, age"},
+		[]string{"SELECT count(DISTINCT age) FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?) and name LIKE ? GROUP BY name, age"},
 		template,
 	)
 	as.Equal(11, len(params[0]))
@@ -482,7 +533,7 @@ func TestTemplatizeSQL_AggregateFunc_AS(t *testing.T) {
 	template, tableInfos, params, op, err = NewExtractor().Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"SELECT count(DISTINCT age) AS cnt FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ? GROUP BY name, age"},
+		[]string{"SELECT count(DISTINCT age) AS cnt FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?) and name LIKE ? GROUP BY name, age"},
 		template,
 	)
 	as.Equal(11, len(params[0]))
@@ -496,7 +547,7 @@ func TestTemplatizeSQL_AggregateFunc_AS(t *testing.T) {
 	template, tableInfos, params, op, err = NewExtractor().Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"SELECT sum(age) FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ? GROUP BY name, age"},
+		[]string{"SELECT sum(age) FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?) and name LIKE ? GROUP BY name, age"},
 		template,
 	)
 	as.Equal(11, len(params[0]))
@@ -510,7 +561,7 @@ func TestTemplatizeSQL_AggregateFunc_AS(t *testing.T) {
 	template, tableInfos, params, op, err = NewExtractor().Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"SELECT avg(age) FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ? GROUP BY name, age"},
+		[]string{"SELECT avg(age) FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?) and name LIKE ? GROUP BY name, age"},
 		template,
 	)
 	as.Equal(11, len(params[0]))
@@ -524,7 +575,7 @@ func TestTemplatizeSQL_AggregateFunc_AS(t *testing.T) {
 	template, tableInfos, params, op, err = NewExtractor().Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"SELECT count(1), sum(age), max(age) FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ? GROUP BY name, age"},
+		[]string{"SELECT count(1), sum(age), max(age) FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?) and name LIKE ? GROUP BY name, age"},
 		template,
 	)
 	as.Equal(11, len(params[0]))
@@ -538,7 +589,7 @@ func TestTemplatizeSQL_AggregateFunc_AS(t *testing.T) {
 	template, tableInfos, params, op, err = NewExtractor().Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"SELECT count(1) AS cnt, sum(age) AS sum_age, max(age) AS max_age FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ? GROUP BY name, age"},
+		[]string{"SELECT count(1) AS cnt, sum(age) AS sum_age, max(age) AS max_age FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?) and name LIKE ? GROUP BY name, age"},
 		template,
 	)
 	as.Equal(11, len(params[0]))
@@ -571,7 +622,7 @@ func TestTemplatizeSQL_Limit(t *testing.T) {
 	template, tableInfos, params, op, err := NewExtractor().Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"SELECT count(1) AS cnt, sum(age) AS sum_age, max(age) AS max_age FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ? GROUP BY name, age LIMIT ?"},
+		[]string{"SELECT count(1) AS cnt, sum(age) AS sum_age, max(age) AS max_age FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?) and name LIKE ? GROUP BY name, age LIMIT ?"},
 		template,
 	)
 	as.Equal(12, len(params[0]))
@@ -585,7 +636,7 @@ func TestTemplatizeSQL_Limit(t *testing.T) {
 	template, tableInfos, params, op, err = NewExtractor().Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"SELECT count(1) AS cnt, sum(age) AS sum_age, max(age) AS max_age FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ? GROUP BY name, age LIMIT ?, ?"},
+		[]string{"SELECT count(1) AS cnt, sum(age) AS sum_age, max(age) AS max_age FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?) and name LIKE ? GROUP BY name, age LIMIT ?, ?"},
 		template,
 	)
 	as.Equal(13, len(params[0]))
@@ -599,7 +650,7 @@ func TestTemplatizeSQL_Limit(t *testing.T) {
 	template, tableInfos, params, op, err = NewExtractor().Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"SELECT count(1) AS cnt, sum(age) AS sum_age, max(age) AS max_age FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ? GROUP BY name, age LIMIT ?, ?"},
+		[]string{"SELECT count(1) AS cnt, sum(age) AS sum_age, max(age) AS max_age FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?) and name LIKE ? GROUP BY name, age LIMIT ?, ?"},
 		template,
 	)
 	as.Equal(13, len(params[0]))
@@ -619,7 +670,7 @@ func TestTemplatizeSQL_Having(t *testing.T) {
 	template, tableInfos, params, op, err := parser.Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"SELECT count(1) AS cnt, sum(age) AS sum_age, max(age) AS max_age FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ? GROUP BY name, age HAVING sum(age) gt ? LIMIT ?, ?"},
+		[]string{"SELECT count(1) AS cnt, sum(age) AS sum_age, max(age) AS max_age FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?) and name LIKE ? GROUP BY name, age HAVING sum(age) gt ? LIMIT ?, ?"},
 		template,
 	)
 	as.Equal(14, len(params[0]))
@@ -633,7 +684,7 @@ func TestTemplatizeSQL_Having(t *testing.T) {
 	template, tableInfos, params, op, err = parser.Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"SELECT count(1) AS cnt, sum(age) AS sum_age, max(age) AS max_age FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ? GROUP BY name, age HAVING sum(age) gt ? and max(age) lt ? LIMIT ?, ?"},
+		[]string{"SELECT count(1) AS cnt, sum(age) AS sum_age, max(age) AS max_age FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?) and name LIKE ? GROUP BY name, age HAVING sum(age) gt ? and max(age) lt ? LIMIT ?, ?"},
 		template,
 	)
 	as.Equal(15, len(params[0]))
@@ -647,7 +698,7 @@ func TestTemplatizeSQL_Having(t *testing.T) {
 	template, tableInfos, params, op, err = parser.Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"SELECT count(1) AS cnt, sum(age) AS sum_age, max(age) AS max_age FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ? GROUP BY name, age HAVING age gt ? and sum(age) gt ? or max(age) lt ? LIMIT ?, ?"},
+		[]string{"SELECT count(1) AS cnt, sum(age) AS sum_age, max(age) AS max_age FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?) and name LIKE ? GROUP BY name, age HAVING age gt ? and sum(age) gt ? or max(age) lt ? LIMIT ?, ?"},
 		template,
 	)
 	as.Equal(16, len(params[0]))
@@ -661,7 +712,7 @@ func TestTemplatizeSQL_Having(t *testing.T) {
 	template, tableInfos, params, op, err = parser.Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"SELECT count(1) AS cnt, sum(age) AS sum_age, max(age) AS max_age FROM users WHERE age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ? GROUP BY name, age HAVING age gt ? and sum(age) gt ? or max(age) lt ? LIMIT ?, ?"},
+		[]string{"SELECT count(1) AS cnt, sum(age) AS sum_age, max(age) AS max_age FROM users WHERE age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?) and name LIKE ? GROUP BY name, age HAVING age gt ? and sum(age) gt ? or max(age) lt ? LIMIT ?, ?"},
 		template)
 	as.Equal(15, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
@@ -674,7 +725,7 @@ func TestTemplatizeSQL_Having(t *testing.T) {
 	template, tableInfos, params, op, err = parser.Extract(sql)
 	as.Nil(err)
 	as.Equal(
-		[]string{"SELECT count(1) AS cnt, sum(age) AS sum_age, max(age) AS max_age FROM users WHERE age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ? GROUP BY name, age HAVING age gt ? and sum(age) gt ? or max(age) lt ? LIMIT ?, ?"},
+		[]string{"SELECT count(1) AS cnt, sum(age) AS sum_age, max(age) AS max_age FROM users WHERE age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?) and name LIKE ? GROUP BY name, age HAVING age gt ? and sum(age) gt ? or max(age) lt ? LIMIT ?, ?"},
 		template)
 	as.Equal(15, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
@@ -687,7 +738,7 @@ func TestTemplatizeSQL_Having(t *testing.T) {
 	template, tableInfos, params, op, err = parser.Extract(sql)
 	as.Nil(err)
 	as.Equal(
-		[]string{"SELECT count(1) AS cnt, sum(age) AS sum_age, max(age) AS max_age FROM users WHERE age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ? GROUP BY name, age HAVING sum(age) gt ? LIMIT ?, ?"},
+		[]string{"SELECT count(1) AS cnt, sum(age) AS sum_age, max(age) AS max_age FROM users WHERE age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?) and name LIKE ? GROUP BY name, age HAVING sum(age) gt ? LIMIT ?, ?"},
 		template)
 	as.Equal(13, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
@@ -724,7 +775,7 @@ func TestTemplatizeSQL_Join(t *testing.T) {
 	template, tableInfos, params, op, err := parser.Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"SELECT * FROM (SELECT * FROM users) AS t1 WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ? GROUP BY name, age HAVING sum(age) gt ? or max(age) lt ? LIMIT ?, ?"},
+		[]string{"SELECT * FROM (SELECT * FROM users) AS t1 WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?) and name LIKE ? GROUP BY name, age HAVING sum(age) gt ? or max(age) lt ? LIMIT ?, ?"},
 		template,
 	)
 	as.Equal(15, len(params[0]))
@@ -738,7 +789,7 @@ func TestTemplatizeSQL_Join(t *testing.T) {
 	template, tableInfos, params, op, err = parser.Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"SELECT * FROM users AS u LEFT JOIN roles AS r ON u.id eq r.user_id LEFT JOIN ages AS a ON u.id eq a.age_id WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ? GROUP BY name, age HAVING sum(age) gt ? or max(age) lt ? LIMIT ?, ?"},
+		[]string{"SELECT * FROM users AS u LEFT JOIN roles AS r ON u.id eq r.user_id LEFT JOIN ages AS a ON u.id eq a.age_id WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?) and name LIKE ? GROUP BY name, age HAVING sum(age) gt ? or max(age) lt ? LIMIT ?, ?"},
 		template,
 	)
 	as.Equal(15, len(params[0]))
@@ -792,7 +843,7 @@ func TestTemplatizeSQL_Join(t *testing.T) {
 	template, tableInfos, params, op, err = parser.Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"SELECT * FROM users AS u LEFT JOIN roles AS r ON u.id eq r.user_id WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ? GROUP BY name, age HAVING sum(age) gt ? or max(age) lt ? LIMIT ?, ?"},
+		[]string{"SELECT * FROM users AS u LEFT JOIN roles AS r ON u.id eq r.user_id WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?) and name LIKE ? GROUP BY name, age HAVING sum(age) gt ? or max(age) lt ? LIMIT ?, ?"},
 		template,
 	)
 	as.Equal(15, len(params[0]))
@@ -830,7 +881,7 @@ func TestTemplatizeSQL_SELECT_DISTINCT(t *testing.T) {
 	template, tableInfos, params, op, err := parser.Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"SELECT DISTINCT name, age FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ? GROUP BY name, age"},
+		[]string{"SELECT DISTINCT name, age FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?) and name LIKE ? GROUP BY name, age"},
 		template,
 	)
 	as.Equal(11, len(params[0]))
@@ -890,7 +941,7 @@ func TestTemplatizeSQL_Insert(t *testing.T) {
 	template, tableInfos, params, op, err = NewExtractor().Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"INSERT INTO users (name, age, high, weight, level, create_time) SELECT name, age, high, weight, level, create_time FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ? GROUP BY name, age HAVING sum(age) gt ? or max(age) lt ? LIMIT ?, ?"},
+		[]string{"INSERT INTO users (name, age, high, weight, level, create_time) SELECT name, age, high, weight, level, create_time FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?) and name LIKE ? GROUP BY name, age HAVING sum(age) gt ? or max(age) lt ? LIMIT ?, ?"},
 		template,
 	)
 	as.Equal(15, len(params[0]))
@@ -918,7 +969,7 @@ func TestTemplatizeSQL_Insert(t *testing.T) {
 	template, tableInfos, params, op, err = NewExtractor().Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"INSERT INTO users (name, age, high, weight, level, create_time) SELECT name, age, high, weight, level, create_time FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ? GROUP BY name, age HAVING sum(age) gt ? or max(age) lt ? LIMIT ?, ? ON DUPLICATE KEY UPDATE name eq VALUES(name), age eq VALUES(age), high eq VALUES(high), weight eq VALUES(weight), level eq VALUES(level), create_time eq VALUES(create_time)"},
+		[]string{"INSERT INTO users (name, age, high, weight, level, create_time) SELECT name, age, high, weight, level, create_time FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?) and name LIKE ? GROUP BY name, age HAVING sum(age) gt ? or max(age) lt ? LIMIT ?, ? ON DUPLICATE KEY UPDATE name eq VALUES(name), age eq VALUES(age), high eq VALUES(high), weight eq VALUES(weight), level eq VALUES(level), create_time eq VALUES(create_time)"},
 		template,
 	)
 	as.Equal(15, len(params[0]))
@@ -932,7 +983,7 @@ func TestTemplatizeSQL_Insert(t *testing.T) {
 	template, tableInfos, params, op, err = NewExtractor().Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"INSERT INTO users (name, age, high, weight, level, create_time) SELECT name, age, high, weight, level, create_time FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?, ?, ?) and name LIKE ? GROUP BY name, age HAVING sum(age) gt ? or max(age) lt ? LIMIT ?, ? ON DUPLICATE KEY UPDATE name eq name, age eq age, high eq high, weight eq weight, level eq level, create_time eq create_time"},
+		[]string{"INSERT INTO users (name, age, high, weight, level, create_time) SELECT name, age, high, weight, level, create_time FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time BETWEEN ? AND ? and id IN (?) and name LIKE ? GROUP BY name, age HAVING sum(age) gt ? or max(age) lt ? LIMIT ?, ? ON DUPLICATE KEY UPDATE name eq name, age eq age, high eq high, weight eq weight, level eq level, create_time eq create_time"},
 		template,
 	)
 	as.Equal(15, len(params[0]))
@@ -1441,7 +1492,7 @@ func TestTemplatizeSQL_Parentheses(t *testing.T) {
 	template, tableInfos, params, op, err = parser.Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"SELECT * FROM users WHERE (id IN (?, ?, ?) or (age gt ? and height gt ?))"},
+		[]string{"SELECT * FROM users WHERE (id IN (?) or (age gt ? and height gt ?))"},
 		template)
 	as.Equal(1, len(params))
 	as.Equal(5, len(params[0]))
@@ -1985,7 +2036,7 @@ func TestTemplatizeSQL_Explain(t *testing.T) {
 	template, tableInfos, params, op, err = parser.Extract(sql)
 	as.Equal(nil, err)
 	as.Equal(
-		[]string{"EXPLAIN FORMAT = JSON SELECT * FROM users WHERE id IN (?, ?, ?)"},
+		[]string{"EXPLAIN FORMAT = JSON SELECT * FROM users WHERE id IN (?)"},
 		template)
 	as.Equal(1, len(params))
 	as.Equal(3, len(params[0]))
@@ -2220,7 +2271,7 @@ func TestTemplatizeSQL_ComplexConditions(t *testing.T) {
 	template, tableInfos, params, op, err := parser.Extract(sql)
 	as.Equal(nil, err)
 	as.Equal([]string{
-		"SELECT * FROM products WHERE (price BETWEEN ? AND ? or stock gt ?) and (category IN (?, ?) or name LIKE ?)",
+		"SELECT * FROM products WHERE (price BETWEEN ? AND ? or stock gt ?) and (category IN (?) or name LIKE ?)",
 	}, template)
 	as.Equal(1, len(params))
 	as.Equal(6, len(params[0]))

@@ -669,12 +669,9 @@ func (v *ExtractVisitor) handlePatternInExpr(node *ast.PatternInExpr) {
 	v.builder.WriteString(" IN (")
 
 	if node.List != nil {
-		for idx := range node.List {
-			if idx > 0 {
-				v.builder.WriteString(", ")
-			}
+		v.builder.WriteString("?")
 
-			v.builder.WriteString("?")
+		for idx := range node.List {
 			// 如果是 ValueExpr，保存参数值
 			if valExpr, ok := node.List[idx].(*test_driver.ValueExpr); ok {
 				v.params = append(v.params, valExpr.GetValue())
