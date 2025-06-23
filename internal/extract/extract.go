@@ -7,10 +7,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/kydance/ziwi/slices"
 	"github.com/pingcap/tidb/pkg/parser"
 	"github.com/pingcap/tidb/pkg/parser/ast"
 	"github.com/pingcap/tidb/pkg/parser/test_driver"
+	"github.com/samber/lo"
 
 	"github.com/kydenul/sql-extractor/internal/models"
 )
@@ -106,7 +106,7 @@ func (e *Extractor) extractOneStmt(stmt ast.StmtNode) (
 	stmt.Accept(v)
 
 	return v.builder.String(),
-		slices.UniqBy(v.tableInfos, func(t *models.TableInfo) string {
+		lo.UniqBy(v.tableInfos, func(t *models.TableInfo) string {
 			if t.Schema() == "" {
 				return t.TableName()
 			}
