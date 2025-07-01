@@ -193,6 +193,8 @@ func (v *ExtractVisitor) Enter(n ast.Node) (ast.Node, bool) {
 	// 4. 条件表达式层 - WHERE/HAVING 子句中的条件
 	case *ast.PatternInExpr:
 		v.handlePatternInExpr(node)
+	case *ast.PatternRegexpExpr:
+		v.handlePatternRegexpExpr(node)
 	case *ast.PatternLikeOrIlikeExpr:
 		v.handlePatternLikeOrIlikeExpr(node)
 	case *ast.BetweenExpr:
@@ -243,7 +245,6 @@ func (v *ExtractVisitor) Enter(n ast.Node) (ast.Node, bool) {
 		v.handleIsTruthExpr(node)
 
 	default:
-		// FIXME PatternRegexpExpr
 		// FIXME PositionExpr
 		// FIXME RowExpr
 		// FIXME VariableExpr
@@ -660,7 +661,8 @@ func (v *ExtractVisitor) handlePatternLikeOrIlikeExpr(node *ast.PatternLikeOrIli
 	}
 	v.builder.WriteString(" LIKE ")
 
-	// 处理 LIKE 模式
+	// For LIKE patterns, all ValueExpr types are parameterized with '?'
+	// to maintain strict templatization.
 	if pattern, ok := node.Pattern.(*test_driver.ValueExpr); ok {
 		v.builder.WriteString("?")
 		v.params = append(v.params, pattern.GetValue())
@@ -674,6 +676,23 @@ func (v *ExtractVisitor) handlePatternLikeOrIlikeExpr(node *ast.PatternLikeOrIli
 	// 	v.builder.WriteString("?")
 	// 	v.params = append(v.params, node.Escape)
 	// }
+}
+
+// handlePatternRegexpExpr 处理 REGEXP 模式
+func (v *ExtractVisitor) handlePatternRegexpExpr(node *ast.PatternRegexpExpr) {
+	node.Expr.Accept(v)
+	if node.Not {
+		v.builder.WriteString(" NOT")
+	}
+	v.builder.WriteString(" REGEXP ")
+
+	// For REGEXP patterns
+	if pattern, ok := node.Pattern.(*test_driver.ValueExpr); ok {
+		v.builder.WriteString("?")
+		v.params = append(v.params, pattern.GetValue())
+	} else {
+		node.Pattern.Accept(v)
+	}
 }
 
 func (v *ExtractVisitor) handlePatternInExpr(node *ast.PatternInExpr) {
