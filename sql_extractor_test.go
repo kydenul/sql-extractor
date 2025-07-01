@@ -37,7 +37,10 @@ func TestExtractor_TemplatizeSQL(t *testing.T) {
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, extractor.OpType())
 	as.Equal([]string{"SELECT * FROM users WHERE name eq ?"}, extractor.TemplatizedSQL())
 	as.Equal([][]any{{"kyden"}}, extractor.Params())
-	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "users", "", "users")}}, extractor.TableInfos())
+	as.Equal(
+		[][]*models.TableInfo{{models.NewTableInfo("", "users", "", "users")}},
+		extractor.TableInfos(),
+	)
 }
 
 func TestExtractor_Params(t *testing.T) {
@@ -52,7 +55,10 @@ func TestExtractor_Params(t *testing.T) {
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, extractor.OpType())
 	as.Equal([]string{"SELECT * FROM users WHERE name eq ?"}, extractor.TemplatizedSQL())
 	as.Equal([][]any{{"kyden"}}, extractor.Params())
-	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "users", "", "users")}}, extractor.TableInfos())
+	as.Equal(
+		[][]*models.TableInfo{{models.NewTableInfo("", "users", "", "users")}},
+		extractor.TableInfos(),
+	)
 
 	// multiple params
 	sql = "SELECT * FROM users WHERE name = 'kyden' AND age = 25 AND active = true"
@@ -60,9 +66,15 @@ func TestExtractor_Params(t *testing.T) {
 	err = extractor.Extract()
 	as.Nil(err)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, extractor.OpType())
-	as.Equal([]string{"SELECT * FROM users WHERE name eq ? and age eq ? and active eq ?"}, extractor.TemplatizedSQL())
+	as.Equal(
+		[]string{"SELECT * FROM users WHERE name eq ? and age eq ? and active eq ?"},
+		extractor.TemplatizedSQL(),
+	)
 	as.Equal([][]any{{"kyden", int64(25), int64(1)}}, extractor.Params())
-	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "users", "", "users")}}, extractor.TableInfos())
+	as.Equal(
+		[][]*models.TableInfo{{models.NewTableInfo("", "users", "", "users")}},
+		extractor.TableInfos(),
+	)
 
 	// no params
 	sql = "SELECT * FROM users"
@@ -72,7 +84,10 @@ func TestExtractor_Params(t *testing.T) {
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, extractor.OpType())
 	as.Equal([]string{"SELECT * FROM users"}, extractor.TemplatizedSQL())
 	as.Equal(0, len(extractor.Params()[0]))
-	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "users", "", "users")}}, extractor.TableInfos())
+	as.Equal(
+		[][]*models.TableInfo{{models.NewTableInfo("", "users", "", "users")}},
+		extractor.TableInfos(),
+	)
 }
 
 func TestExtractor_TableInfos(t *testing.T) {
@@ -87,7 +102,10 @@ func TestExtractor_TableInfos(t *testing.T) {
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, extractor.OpType())
 	as.Equal([]string{"SELECT * FROM users WHERE name eq ?"}, extractor.TemplatizedSQL())
 	as.Equal([][]any{{"kyden"}}, extractor.Params())
-	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "users", "", "users")}}, extractor.TableInfos())
+	as.Equal(
+		[][]*models.TableInfo{{models.NewTableInfo("", "users", "", "users")}},
+		extractor.TableInfos(),
+	)
 
 	// multiple tables
 	sql = "SELECT * FROM users u JOIN orders o ON u.id = o.user_id WHERE u.name = 'kyden'"
@@ -95,7 +113,12 @@ func TestExtractor_TableInfos(t *testing.T) {
 	err = extractor.Extract()
 	as.Nil(err)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, extractor.OpType())
-	as.Equal([]string{"SELECT * FROM users AS u CROSS JOIN orders AS o ON u.id eq o.user_id WHERE u.name eq ?"}, extractor.TemplatizedSQL())
+	as.Equal(
+		[]string{
+			"SELECT * FROM users AS u CROSS JOIN orders AS o ON u.id eq o.user_id WHERE u.name eq ?",
+		},
+		extractor.TemplatizedSQL(),
+	)
 	as.Equal([][]any{{"kyden"}}, extractor.Params())
 	as.Equal([][]*models.TableInfo{
 		{
@@ -188,7 +211,9 @@ func TestExtractor_ComplexQueries(t *testing.T) {
 	as.Nil(err)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, extractor.OpType())
 	as.Equal(
-		[]string{"SELECT u.name, o.order_id FROM users AS u CROSS JOIN orders AS o ON u.id eq o.user_id WHERE u.age gt ? and o.amount gt ?"},
+		[]string{
+			"SELECT u.name, o.order_id FROM users AS u CROSS JOIN orders AS o ON u.id eq o.user_id WHERE u.age gt ? and o.amount gt ?",
+		},
 		extractor.TemplatizedSQL(),
 	)
 	as.Equal(2, len(extractor.Params()[0]))
@@ -209,11 +234,16 @@ func TestExtractor_ComplexQueries(t *testing.T) {
 	as.Nil(err)
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, extractor.OpType())
 	as.Equal(
-		[]string{"SELECT department, COUNT(1) AS count FROM employees WHERE salary ge ? GROUP BY department HAVING count gt ?"},
+		[]string{
+			"SELECT department, COUNT(1) AS count FROM employees WHERE salary ge ? GROUP BY department HAVING count gt ?",
+		},
 		extractor.TemplatizedSQL(),
 	)
 	as.Equal([][]any{{int64(50000), int64(5)}}, extractor.Params())
-	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "employees", "", "employees")}}, extractor.TableInfos())
+	as.Equal(
+		[][]*models.TableInfo{{models.NewTableInfo("", "employees", "", "employees")}},
+		extractor.TableInfos(),
+	)
 }
 
 func TestExtractor_0(t *testing.T) {
@@ -225,7 +255,9 @@ func TestExtractor_0(t *testing.T) {
 	err := extractor.Extract()
 	as.Nil(err)
 	as.Equal(
-		[]string{"UPDATE tbGameCoinSerialV2 SET iStatus eq ?, sRecvErrorNo eq ?, sRecvErrorNo2 eq ?, sRecvErrorMsg eq ?, sDeductInfo eq ?, sRecv eq ? WHERE sSerialNum eq ? and sPayType eq ?"},
+		[]string{
+			"UPDATE tbGameCoinSerialV2 SET iStatus eq ?, sRecvErrorNo eq ?, sRecvErrorNo2 eq ?, sRecvErrorMsg eq ?, sDeductInfo eq ?, sRecv eq ? WHERE sSerialNum eq ? and sPayType eq ?",
+		},
 		extractor.TemplatizedSQL(),
 	)
 
@@ -234,7 +266,9 @@ func TestExtractor_0(t *testing.T) {
 	err = extractor.Extract()
 	as.Nil(err)
 	as.Equal(
-		[]string{"SELECT lId, sBizCode, iGoodsId, iNum, sExt FROM dbUserCart_?.tbUserCart_? WHERE sUid eq ? and sGoodsApp eq ? and sBizCode eq ? and sGroupKey eq ?"},
+		[]string{
+			"SELECT lId, sBizCode, iGoodsId, iNum, sExt FROM dbUserCart_?.tbUserCart_? WHERE sUid eq ? and sGoodsApp eq ? and sBizCode eq ? and sGroupKey eq ?",
+		},
 		extractor.TemplatizedSQL(),
 	)
 	as.Equal([][]*models.TableInfo{
@@ -249,4 +283,49 @@ func TestExtractor_0(t *testing.T) {
 	extractor.SetRawSQL(sql)
 	extractor.Extract()
 	t.Log(extractor.TemplatizedSQL())
+}
+
+func TestExtractor_1(t *testing.T) {
+	t.Parallel()
+	as := assert.New(t)
+
+	sql := "SELECT sBizCode FROM dbUserRss.tbUserRss_1 WHERE sUid = ?"
+	extractor := NewExtractor(sql)
+	err := extractor.Extract()
+	as.Nil(err)
+
+	tsql := extractor.TemplatizedSQL()
+
+	as.Equal([]string{"SELECT sBizCode FROM dbUserRss.tbUserRss_? WHERE sUid eq ?"}, tsql)
+	as.Equal(
+		[][]*models.TableInfo{
+			{models.NewTableInfo("dbUserRss", "tbUserRss_1", "dbUserRss", "tbUserRss_?")},
+		},
+		extractor.TableInfos(),
+	)
+	as.Equal([]bool{true}, extractor.HasParamMarker())
+
+	// Update
+	sql = "update db_check_in.check_in_daily_record_20250630 set status=?,reward_rsp=?,reward_log=?,update_time=? where auto_id=? and user_id=? and record_key=?"
+	extractor.SetRawSQL(sql)
+	err = extractor.Extract()
+	as.Nil(err)
+
+	tsql = extractor.TemplatizedSQL()
+	as.Equal(
+		[]string{
+			"UPDATE db_check_in.check_in_daily_record_? SET status eq ?, reward_rsp eq ?, reward_log eq ?, update_time eq ? WHERE auto_id eq ? and user_id eq ? and record_key eq ?",
+		},
+		tsql)
+	as.Equal([][]*models.TableInfo{
+		{
+			models.NewTableInfo(
+				"db_check_in",
+				"check_in_daily_record_20250630",
+				"db_check_in",
+				"check_in_daily_record_?",
+			),
+		},
+	}, extractor.TableInfos())
+	as.Equal([]bool{true}, extractor.HasParamMarker())
 }

@@ -18,6 +18,7 @@ type Extractor struct {
 	params       [][]any               // parameters: where conditions, order by, limit, offset
 	tableInfos   [][]*models.TableInfo // table infos: Schema, Tablename
 	hash         []string              // hash of the templatized SQL
+	hasPamMarker []bool                // whether the SQL contains parameter markers
 }
 
 // NewExtractor creates a new Extractor. It requires a raw SQL string.
@@ -29,6 +30,7 @@ func NewExtractor(sql string) *Extractor {
 		params:       [][]any{},
 		tableInfos:   [][]*models.TableInfo{},
 		hash:         []string{},
+		hasPamMarker: []bool{},
 	}
 }
 
@@ -74,6 +76,9 @@ func (e *Extractor) TemplatizedSQLHash(fn ...func([]byte) string) []string {
 	return e.hash
 }
 
+// HasParamMarker returns whether the SQLs contains parameter markers.
+func (e *Extractor) HasParamMarker() []bool { return e.hasPamMarker }
+
 // Extract extracts information from the raw SQL string. It extracts the templatized
 // SQL, parameters, table information, and operation type.
 //
@@ -86,7 +91,9 @@ func (e *Extractor) TemplatizedSQLHash(fn ...func([]byte) string) []string {
 //	}
 //	fmt.Println(extractor.TemplatizeSQL())
 func (e *Extractor) Extract() (err error) {
-	if e.templatedSQL, e.tableInfos, e.params, e.opType, err = extract.NewExtractor().Extract(e.rawSQL); err != nil {
+	e.templatedSQL, e.tableInfos, e.params, e.opType, e.hasPamMarker, err = extract.
+		NewExtractor().Extract(e.rawSQL)
+	if err != nil {
 		return err
 	}
 	e.doHash()
