@@ -42,22 +42,23 @@ func NewExtractor() *Extractor {
 	}
 }
 
-// Extract returns the templatized SQL, table info, parameters and operation type.
+// Extract returns the templatized SQL, table info, parameters, operation type
+// and whether the SQL contains parameter markers.
 // It supports multiple SQL statements separated by semicolons.
 func (e *Extractor) Extract(sql string) (
-	[]string, [][]*models.TableInfo, [][]any, []models.SQLOpType, error,
+	[]string, [][]*models.TableInfo, [][]any, []models.SQLOpType, []bool, error,
 ) {
 	if sql == "" {
-		return nil, nil, nil, nil, errors.New("empty SQL statement")
+		return nil, nil, nil, nil, nil, errors.New("empty SQL statement")
 	}
 
 	stmts, _, err := e.parser.Parse(sql, "", "")
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
 
 	if len(stmts) == 0 {
-		return nil, nil, nil, nil, errors.New("no valid SQL statements found")
+		return nil, nil, nil, nil, nil, errors.New("no valid SQL statements found")
 	}
 
 	// Handle multiple statements
@@ -66,30 +67,36 @@ func (e *Extractor) Extract(sql string) (
 		allParams         = make([][]any, 0, len(stmts))
 		allTableInfos     = make([][]*models.TableInfo, 0, len(stmts))
 		opType            = make([]models.SQLOpType, 0, len(stmts))
+		hasParamMarker    = make([]bool, 0, len(stmts))
 	)
 
 	for idx := range stmts {
-		templatedSQL, tableInfos, params, op, err := e.extractOneStmt(stmts[idx])
+		templatedSQL, tableInfos, params, op, paramMarker, err := e.extractOneStmt(stmts[idx])
 		if err != nil {
-			return nil, nil, nil, nil, fmt.Errorf("error processing statement %d: %w", idx+1, err)
+			return nil, nil, nil, nil, nil, fmt.Errorf(
+				"error processing statement %d: %w",
+				idx+1,
+				err,
+			)
 		}
 
 		allTemplatizedSQL = append(allTemplatizedSQL, templatedSQL)
 		allParams = append(allParams, params)
 		allTableInfos = append(allTableInfos, tableInfos)
 		opType = append(opType, op)
+		hasParamMarker = append(hasParamMarker, paramMarker)
 	}
 
-	return allTemplatizedSQL, allTableInfos, allParams, opType, nil
+	return allTemplatizedSQL, allTableInfos, allParams, opType, hasParamMarker, nil
 }
 
 // extractOneStmt handles a single SQL statement
 func (e *Extractor) extractOneStmt(stmt ast.StmtNode) (
-	string, []*models.TableInfo, []any, models.SQLOpType, error,
+	string, []*models.TableInfo, []any, models.SQLOpType, bool, error,
 ) {
 	v, ok := e.pool.Get().(*ExtractVisitor)
 	if !ok {
-		return "", nil, nil, models.SQLOperationUnknown,
+		return "", nil, nil, models.SQLOperationUnknown, false,
 			errors.New("failed to get ExtractVisitor from pool")
 	}
 
@@ -115,16 +122,18 @@ func (e *Extractor) extractOneStmt(stmt ast.StmtNode) (
 		}),
 		v.params,
 		v.opType,
+		v.hasParamMarker,
 		nil
 }
 
 // ExtractVisitor 实现 ast.Visitor 接口
 type ExtractVisitor struct {
-	builder    *strings.Builder
-	params     []any
-	inAggrFunc bool
-	tableInfos []*models.TableInfo
-	opType     models.SQLOpType
+	builder        *strings.Builder
+	params         []any
+	inAggrFunc     bool
+	tableInfos     []*models.TableInfo
+	opType         models.SQLOpType
+	hasParamMarker bool // 标记该 SQL 语句是否包含参数占位符
 }
 
 // 避免重复字符串操作
@@ -225,6 +234,12 @@ func (v *ExtractVisitor) Enter(n ast.Node) (ast.Node, bool) {
 	// 8. 处理 DEFAULT 表达式
 	case *ast.DefaultExpr:
 		v.handleDefaultExpr(node)
+
+	// 9. 处理参数标记
+	case *test_driver.ParamMarkerExpr:
+		// ParamMarkerExpr 仅表示占位符，实际参数值由父节点（如 ValueExpr, Assignment）处理
+		v.builder.WriteString("?")
+		v.hasParamMarker = true
 
 	default:
 		// FIXME IsTruthExpr
