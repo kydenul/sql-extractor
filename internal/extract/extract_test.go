@@ -69,6 +69,57 @@ func TestTemplatizeSQL_Wildcard(t *testing.T) {
 	as.Equal([]bool{false}, pms)
 }
 
+func TestTemplatizeSQL_PositionExpr(t *testing.T) {
+	t.Parallel()
+	as := assert.New(t)
+	parser := NewExtractor()
+
+	// Test ORDER BY with literal positions
+	sql := "SELECT a, b FROM users ORDER BY 1, 2 DESC"
+	template, tableInfos, params, op, pms, err := parser.Extract(sql)
+	as.Nil(err)
+	as.Equal(
+		[]string{"SELECT a, b FROM users ORDER BY 1, 2 DESC"},
+		template,
+	)
+	as.Equal(0, len(params[0]))
+	as.Equal([][]*models.TableInfo{{
+		models.NewTableInfo("", "users", "", "users"),
+	}}, tableInfos)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+	as.Equal([]bool{false}, pms)
+
+	// Test GROUP BY with literal position
+	sql = "SELECT a, COUNT(*) FROM users GROUP BY 1"
+	template, tableInfos, params, op, pms, err = parser.Extract(sql)
+	as.Nil(err)
+	as.Equal(
+		[]string{"SELECT a, COUNT(1) FROM users GROUP BY 1"},
+		template,
+	)
+	as.Equal(0, len(params[0]))
+	as.Equal([][]*models.TableInfo{{
+		models.NewTableInfo("", "users", "", "users"),
+	}}, tableInfos)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+	as.Equal([]bool{false}, pms)
+
+	// Test ORDER BY with parameterized position (less common, but tests the P field)
+	sql = "SELECT a, b FROM users ORDER BY ?"
+	template, tableInfos, params, op, pms, err = parser.Extract(sql)
+	as.Nil(err)
+	as.Equal(
+		[]string{"SELECT a, b FROM users ORDER BY ?"},
+		template,
+	)
+	as.Equal(0, len(params[0])) // ParamMarkerExpr does not add to params
+	as.Equal([][]*models.TableInfo{{
+		models.NewTableInfo("", "users", "", "users"),
+	}}, tableInfos)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+	as.Equal([]bool{true}, pms) // Should have a parameter marker
+}
+
 func TestTemplatizeSQL_eq_gt_ge_lt_le(t *testing.T) {
 	t.Parallel()
 	as := assert.New(t)
@@ -156,6 +207,21 @@ func TestTemplatizeSQL_between_and(t *testing.T) {
 		template,
 	)
 	as.Equal(2, len(params[0]))
+	as.Equal([][]*models.TableInfo{{
+		models.NewTableInfo("", "users", "", "users"),
+	}}, tableInfos)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+	as.Equal([]bool{false}, pms)
+
+	// not between and
+	sql = "SELECT * FROM users WHERE name = 'Alice' AND age > 18 AND high >= 173 AND weight < 150 and level <= 100 and create_time not between '2021-01-01' and '2021-01-02'"
+	template, tableInfos, params, op, pms, err = parser.Extract(sql)
+	as.Equal(nil, err)
+	as.Equal(
+		[]string{"SELECT * FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time NOT BETWEEN ? AND ?"},
+		template,
+	)
+	as.Equal(7, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
 		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
@@ -3511,6 +3577,19 @@ func TestIsTruthExpr(t *testing.T) {
 	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
 	as.Equal(
 		[]string{"SELECT * FROM orders WHERE status IS TRUE and bCard IS FALSE and total gt ? or customer_id IS NULL"},
+		template,
+	)
+	as.Equal([][]any{{int64(1000)}}, params)
+	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "orders", "", "orders")}}, tableInfos)
+	as.Equal([]bool{false}, pms)
+
+	// Test is not true / false
+	sql = "SELECT * FROM orders WHERE status IS NOT TRUE AND total > 1000;"
+	template, tableInfos, params, op, pms, err = extractor.Extract(sql)
+	as.Nil(err)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+	as.Equal(
+		[]string{"SELECT * FROM orders WHERE status IS NOT TRUE and total gt ?"},
 		template,
 	)
 	as.Equal([][]any{{int64(1000)}}, params)
