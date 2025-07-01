@@ -9,7 +9,9 @@ import (
 
 func main() {
 	// 创建提取器
-	extractor := sqlextractor.NewExtractor("select lId,sBizCode,iGoodsId,iNum,sExt from dbUserCart_8.tbUserCart_49 where sUid='9764196850946095192' and sGoodsApp='9866' and sBizCode='ty' and sGroupKey ='areaid=170&platid=0&partition=17&roleid=17298608743218413570'") //nolint:lll,golines
+	extractor := sqlextractor.NewExtractor(
+		"select lId,sBizCode,iGoodsId,iNum,sExt from dbUserCart_8.tbUserCart_49 where sUid='9764196850946095192' and sGoodsApp='9866' and sBizCode='ty' and sGroupKey ='areaid=170&platid=0&partition=17&roleid=17298608743218413570'",
+	) //nolint:lll,golines
 
 	// 提取 SQL 信息
 	err := extractor.Extract()
@@ -37,4 +39,6 @@ func main() {
 			fmt.Println("TableName: ", tb.TableName())
 		}
 	}
+
+	fmt.Println(extractor.HasParamMarker())
 }
