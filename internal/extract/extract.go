@@ -244,8 +244,10 @@ func (v *ExtractVisitor) Enter(n ast.Node) (ast.Node, bool) {
 	case *ast.IsTruthExpr:
 		v.handleIsTruthExpr(node)
 
+	case *ast.PositionExpr:
+		v.handlePositionExpr(node)
+
 	default:
-		// FIXME PositionExpr
 		// FIXME RowExpr
 		// FIXME VariableExpr
 		// FIXME MatchAgainst
@@ -1174,6 +1176,17 @@ func (v *ExtractVisitor) appendPatternAndWhere(node *ast.ShowStmt) {
 	if node.Where != nil {
 		v.builder.WriteString(" WHERE ")
 		node.Where.Accept(v)
+	}
+}
+
+// handlePositionExpr 处理 ORDER BY 或 GROUP BY 中的位置表达式 (e.g., ORDER BY 1, 2)
+func (v *ExtractVisitor) handlePositionExpr(node *ast.PositionExpr) {
+	if node.P != nil {
+		// If it's a parameterized position, visit the expression (which should be a ParamMarkerExpr or ValueExpr)
+		node.P.Accept(v)
+	} else {
+		// Otherwise, write the literal position number
+		v.builder.WriteString(strconv.Itoa(node.N))
 	}
 }
 

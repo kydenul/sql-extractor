@@ -69,6 +69,57 @@ func TestTemplatizeSQL_Wildcard(t *testing.T) {
 	as.Equal([]bool{false}, pms)
 }
 
+func TestTemplatizeSQL_PositionExpr(t *testing.T) {
+	t.Parallel()
+	as := assert.New(t)
+	parser := NewExtractor()
+
+	// Test ORDER BY with literal positions
+	sql := "SELECT a, b FROM users ORDER BY 1, 2 DESC"
+	template, tableInfos, params, op, pms, err := parser.Extract(sql)
+	as.Nil(err)
+	as.Equal(
+		[]string{"SELECT a, b FROM users ORDER BY 1, 2 DESC"},
+		template,
+	)
+	as.Equal(0, len(params[0]))
+	as.Equal([][]*models.TableInfo{{
+		models.NewTableInfo("", "users", "", "users"),
+	}}, tableInfos)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+	as.Equal([]bool{false}, pms)
+
+	// Test GROUP BY with literal position
+	sql = "SELECT a, COUNT(*) FROM users GROUP BY 1"
+	template, tableInfos, params, op, pms, err = parser.Extract(sql)
+	as.Nil(err)
+	as.Equal(
+		[]string{"SELECT a, COUNT(1) FROM users GROUP BY 1"},
+		template,
+	)
+	as.Equal(0, len(params[0]))
+	as.Equal([][]*models.TableInfo{{
+		models.NewTableInfo("", "users", "", "users"),
+	}}, tableInfos)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+	as.Equal([]bool{false}, pms)
+
+	// Test ORDER BY with parameterized position (less common, but tests the P field)
+	sql = "SELECT a, b FROM users ORDER BY ?"
+	template, tableInfos, params, op, pms, err = parser.Extract(sql)
+	as.Nil(err)
+	as.Equal(
+		[]string{"SELECT a, b FROM users ORDER BY ?"},
+		template,
+	)
+	as.Equal(0, len(params[0])) // ParamMarkerExpr does not add to params
+	as.Equal([][]*models.TableInfo{{
+		models.NewTableInfo("", "users", "", "users"),
+	}}, tableInfos)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+	as.Equal([]bool{true}, pms) // Should have a parameter marker
+}
+
 func TestTemplatizeSQL_eq_gt_ge_lt_le(t *testing.T) {
 	t.Parallel()
 	as := assert.New(t)
