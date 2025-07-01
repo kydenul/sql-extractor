@@ -193,6 +193,8 @@ func (v *ExtractVisitor) Enter(n ast.Node) (ast.Node, bool) {
 	// 4. 条件表达式层 - WHERE/HAVING 子句中的条件
 	case *ast.PatternInExpr:
 		v.handlePatternInExpr(node)
+	case *ast.PatternRegexpExpr:
+		v.handlePatternRegexpExpr(node)
 	case *ast.PatternLikeOrIlikeExpr:
 		v.handlePatternLikeOrIlikeExpr(node)
 	case *ast.BetweenExpr:
@@ -242,9 +244,10 @@ func (v *ExtractVisitor) Enter(n ast.Node) (ast.Node, bool) {
 	case *ast.IsTruthExpr:
 		v.handleIsTruthExpr(node)
 
+	case *ast.PositionExpr:
+		v.handlePositionExpr(node)
+
 	default:
-		// FIXME PatternRegexpExpr
-		// FIXME PositionExpr
 		// FIXME RowExpr
 		// FIXME VariableExpr
 		// FIXME MatchAgainst
@@ -660,7 +663,8 @@ func (v *ExtractVisitor) handlePatternLikeOrIlikeExpr(node *ast.PatternLikeOrIli
 	}
 	v.builder.WriteString(" LIKE ")
 
-	// 处理 LIKE 模式
+	// For LIKE patterns, all ValueExpr types are parameterized with '?'
+	// to maintain strict templatization.
 	if pattern, ok := node.Pattern.(*test_driver.ValueExpr); ok {
 		v.builder.WriteString("?")
 		v.params = append(v.params, pattern.GetValue())
@@ -674,6 +678,23 @@ func (v *ExtractVisitor) handlePatternLikeOrIlikeExpr(node *ast.PatternLikeOrIli
 	// 	v.builder.WriteString("?")
 	// 	v.params = append(v.params, node.Escape)
 	// }
+}
+
+// handlePatternRegexpExpr 处理 REGEXP 模式
+func (v *ExtractVisitor) handlePatternRegexpExpr(node *ast.PatternRegexpExpr) {
+	node.Expr.Accept(v)
+	if node.Not {
+		v.builder.WriteString(" NOT")
+	}
+	v.builder.WriteString(" REGEXP ")
+
+	// For REGEXP patterns
+	if pattern, ok := node.Pattern.(*test_driver.ValueExpr); ok {
+		v.builder.WriteString("?")
+		v.params = append(v.params, pattern.GetValue())
+	} else {
+		node.Pattern.Accept(v)
+	}
 }
 
 func (v *ExtractVisitor) handlePatternInExpr(node *ast.PatternInExpr) {
@@ -711,10 +732,11 @@ func (v *ExtractVisitor) handleBetweenExpr(node *ast.BetweenExpr) {
 	node.Expr.Accept(v)
 
 	if node.Not {
-		v.builder.WriteString("NOT ")
+		v.builder.WriteString(" NOT BETWEEN ")
+	} else {
+		v.builder.WriteString(" BETWEEN ")
 	}
 
-	v.builder.WriteString(" BETWEEN ")
 	node.Left.Accept(v)
 	v.builder.WriteString(" AND ")
 	node.Right.Accept(v)
@@ -1155,6 +1177,17 @@ func (v *ExtractVisitor) appendPatternAndWhere(node *ast.ShowStmt) {
 	if node.Where != nil {
 		v.builder.WriteString(" WHERE ")
 		node.Where.Accept(v)
+	}
+}
+
+// handlePositionExpr 处理 ORDER BY 或 GROUP BY 中的位置表达式 (e.g., ORDER BY 1, 2)
+func (v *ExtractVisitor) handlePositionExpr(node *ast.PositionExpr) {
+	if node.P != nil {
+		// If it's a parameterized position, visit the expression (which should be a ParamMarkerExpr or ValueExpr)
+		node.P.Accept(v)
+	} else {
+		// Otherwise, write the literal position number
+		v.builder.WriteString(strconv.Itoa(node.N))
 	}
 }
 

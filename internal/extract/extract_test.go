@@ -69,6 +69,57 @@ func TestTemplatizeSQL_Wildcard(t *testing.T) {
 	as.Equal([]bool{false}, pms)
 }
 
+func TestTemplatizeSQL_PositionExpr(t *testing.T) {
+	t.Parallel()
+	as := assert.New(t)
+	parser := NewExtractor()
+
+	// Test ORDER BY with literal positions
+	sql := "SELECT a, b FROM users ORDER BY 1, 2 DESC"
+	template, tableInfos, params, op, pms, err := parser.Extract(sql)
+	as.Nil(err)
+	as.Equal(
+		[]string{"SELECT a, b FROM users ORDER BY 1, 2 DESC"},
+		template,
+	)
+	as.Equal(0, len(params[0]))
+	as.Equal([][]*models.TableInfo{{
+		models.NewTableInfo("", "users", "", "users"),
+	}}, tableInfos)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+	as.Equal([]bool{false}, pms)
+
+	// Test GROUP BY with literal position
+	sql = "SELECT a, COUNT(*) FROM users GROUP BY 1"
+	template, tableInfos, params, op, pms, err = parser.Extract(sql)
+	as.Nil(err)
+	as.Equal(
+		[]string{"SELECT a, COUNT(1) FROM users GROUP BY 1"},
+		template,
+	)
+	as.Equal(0, len(params[0]))
+	as.Equal([][]*models.TableInfo{{
+		models.NewTableInfo("", "users", "", "users"),
+	}}, tableInfos)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+	as.Equal([]bool{false}, pms)
+
+	// Test ORDER BY with parameterized position (less common, but tests the P field)
+	sql = "SELECT a, b FROM users ORDER BY ?"
+	template, tableInfos, params, op, pms, err = parser.Extract(sql)
+	as.Nil(err)
+	as.Equal(
+		[]string{"SELECT a, b FROM users ORDER BY ?"},
+		template,
+	)
+	as.Equal(0, len(params[0])) // ParamMarkerExpr does not add to params
+	as.Equal([][]*models.TableInfo{{
+		models.NewTableInfo("", "users", "", "users"),
+	}}, tableInfos)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+	as.Equal([]bool{true}, pms) // Should have a parameter marker
+}
+
 func TestTemplatizeSQL_eq_gt_ge_lt_le(t *testing.T) {
 	t.Parallel()
 	as := assert.New(t)
@@ -156,6 +207,21 @@ func TestTemplatizeSQL_between_and(t *testing.T) {
 		template,
 	)
 	as.Equal(2, len(params[0]))
+	as.Equal([][]*models.TableInfo{{
+		models.NewTableInfo("", "users", "", "users"),
+	}}, tableInfos)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+	as.Equal([]bool{false}, pms)
+
+	// not between and
+	sql = "SELECT * FROM users WHERE name = 'Alice' AND age > 18 AND high >= 173 AND weight < 150 and level <= 100 and create_time not between '2021-01-01' and '2021-01-02'"
+	template, tableInfos, params, op, pms, err = parser.Extract(sql)
+	as.Equal(nil, err)
+	as.Equal(
+		[]string{"SELECT * FROM users WHERE name eq ? and age gt ? and high ge ? and weight lt ? and level le ? and create_time NOT BETWEEN ? AND ?"},
+		template,
+	)
+	as.Equal(7, len(params[0]))
 	as.Equal([][]*models.TableInfo{{
 		models.NewTableInfo("", "users", "", "users"),
 	}}, tableInfos)
@@ -3515,5 +3581,130 @@ func TestIsTruthExpr(t *testing.T) {
 	)
 	as.Equal([][]any{{int64(1000)}}, params)
 	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "orders", "", "orders")}}, tableInfos)
+	as.Equal([]bool{false}, pms)
+
+	// Test is not true / false
+	sql = "SELECT * FROM orders WHERE status IS NOT TRUE AND total > 1000;"
+	template, tableInfos, params, op, pms, err = extractor.Extract(sql)
+	as.Nil(err)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+	as.Equal(
+		[]string{"SELECT * FROM orders WHERE status IS NOT TRUE and total gt ?"},
+		template,
+	)
+	as.Equal([][]any{{int64(1000)}}, params)
+	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "orders", "", "orders")}}, tableInfos)
+	as.Equal([]bool{false}, pms)
+}
+
+func TestPatternRegexpExpr(t *testing.T) {
+	t.Parallel()
+	as := assert.New(t)
+	extractor := NewExtractor()
+
+	// Test with a simple REGEXP pattern
+	sql := "SELECT * FROM users WHERE name REGEXP '^kyden';"
+	template, tableInfos, params, op, pms, err := extractor.Extract(sql)
+	as.Nil(err)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+	as.Equal(
+		[]string{"SELECT * FROM users WHERE name REGEXP ?"},
+		template,
+	)
+	as.Equal([][]any{{"^kyden"}}, params)
+	as.Equal(
+		[][]*models.TableInfo{{models.NewTableInfo("", "users", "", "users")}},
+		tableInfos,
+	)
+	as.Equal([]bool{false}, pms)
+
+	// Test with a more complex REGEXP pattern
+	sql = "SELECT * FROM products WHERE description REGEXP 'item[0-9]+';"
+	template, tableInfos, params, op, pms, err = extractor.Extract(sql)
+	as.Nil(err)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+	as.Equal(
+		[]string{"SELECT * FROM products WHERE description REGEXP ?"},
+		template,
+	)
+	as.Equal([][]any{{"item[0-9]+"}}, params)
+	as.Equal(
+		[][]*models.TableInfo{{models.NewTableInfo("", "products", "", "products")}},
+		tableInfos,
+	)
+	as.Equal([]bool{false}, pms)
+
+	// Test with REGEXP in a compound condition
+	sql = "SELECT * FROM logs WHERE message REGEXP 'error|exception' AND level = 'high';"
+	template, tableInfos, params, op, pms, err = extractor.Extract(sql)
+	as.Nil(err)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+	as.Equal(
+		[]string{"SELECT * FROM logs WHERE message REGEXP ? and level eq ?"},
+		template,
+	)
+	as.Equal([][]any{{"error|exception", "high"}}, params)
+	as.Equal(
+		[][]*models.TableInfo{{models.NewTableInfo("", "logs", "", "logs")}},
+		tableInfos,
+	)
+	as.Equal([]bool{false}, pms)
+
+	// Test with NOT REGEXP
+	sql = "SELECT * FROM users WHERE email NOT REGEXP '@invalid.com$';"
+	template, tableInfos, params, op, pms, err = extractor.Extract(sql)
+	as.Nil(err)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+	as.Equal(
+		[]string{"SELECT * FROM users WHERE email NOT REGEXP ?"},
+		template,
+	)
+	as.Equal([][]any{{"@invalid.com$"}}, params)
+	as.Equal(
+		[][]*models.TableInfo{{models.NewTableInfo("", "users", "", "users")}},
+		tableInfos,
+	)
+	as.Equal([]bool{false}, pms)
+
+	// Test with REGEXP in subquery
+	sql = "SELECT * FROM users WHERE id IN (SELECT user_id FROM orders WHERE order_notes REGEXP 'urgent');"
+	template, tableInfos, params, op, pms, err = extractor.Extract(sql)
+	as.Nil(err)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+	as.Equal(
+		[]string{"SELECT * FROM users WHERE id IN ((SELECT user_id FROM orders WHERE order_notes REGEXP ?))"},
+		template,
+	)
+	as.Equal([][]any{{"urgent"}}, params)
+	as.Equal(
+		[][]*models.TableInfo{
+			{
+				models.NewTableInfo("", "users", "", "users"),
+				models.NewTableInfo("", "orders", "", "orders"),
+			},
+		},
+		tableInfos,
+	)
+	as.Equal([]bool{false}, pms)
+
+	// Test with REGEXP in JOIN condition
+	sql = "SELECT u.*, o.* FROM users u JOIN orders o ON u.id = o.user_id WHERE o.order_notes REGEXP 'special';"
+	template, tableInfos, params, op, pms, err = extractor.Extract(sql)
+	as.Nil(err)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+	as.Equal(
+		[]string{"SELECT u.*, o.* FROM users AS u CROSS JOIN orders AS o ON u.id eq o.user_id WHERE o.order_notes REGEXP ?"},
+		template,
+	)
+	as.Equal([][]any{{"special"}}, params)
+	as.Equal(
+		[][]*models.TableInfo{
+			{
+				models.NewTableInfo("", "users", "", "users"),
+				models.NewTableInfo("", "orders", "", "orders"),
+			},
+		},
+		tableInfos,
+	)
 	as.Equal([]bool{false}, pms)
 }
