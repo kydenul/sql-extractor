@@ -19,6 +19,9 @@ sql-extractor 是一个高性能的 SQL 解析和转换工具，它可以将 SQL
   - 子查询
   - 聚合函数
   - 各种 SQL 表达式（LIKE、IN、BETWEEN 等）
+  - 支持 PatternRegexpExpr 正则表达式模式匹配
+  - 支持 IsTruthExpr 真值表达式
+  - 支持 PositionExpr 位置表达式
 
 ## 性能优化
 
