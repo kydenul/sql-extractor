@@ -159,6 +159,10 @@ func (v *ExtractVisitor) Enter(n ast.Node) (ast.Node, bool) {
 		v.handleColumnNameExpr(node)
 	case *test_driver.ValueExpr:
 		v.handleValueExpr(node)
+	case *test_driver.ParamMarkerExpr:
+		// ParamMarkerExpr 仅表示占位符，实际参数值由父节点（如 ValueExpr, Assignment）处理
+		v.builder.WriteString("?")
+		v.hasParamMarker = true
 	case *ast.BinaryOperationExpr: // e.g 1+1, and
 		v.handleBinaryOperationExpr(node)
 	case *ast.TableName:
@@ -235,14 +239,10 @@ func (v *ExtractVisitor) Enter(n ast.Node) (ast.Node, bool) {
 	case *ast.DefaultExpr:
 		v.handleDefaultExpr(node)
 
-	// 9. 处理参数标记
-	case *test_driver.ParamMarkerExpr:
-		// ParamMarkerExpr 仅表示占位符，实际参数值由父节点（如 ValueExpr, Assignment）处理
-		v.builder.WriteString("?")
-		v.hasParamMarker = true
+	case *ast.IsTruthExpr:
+		v.handleIsTruthExpr(node)
 
 	default:
-		// FIXME IsTruthExpr
 		// FIXME PatternRegexpExpr
 		// FIXME PositionExpr
 		// FIXME RowExpr
@@ -950,6 +950,25 @@ func (v *ExtractVisitor) handleDefaultExpr(node *ast.DefaultExpr) {
 	if node.Name != nil {
 		v.builder.WriteString(" ")
 		v.builder.WriteString(node.Name.String())
+	}
+}
+
+// handleIsTruthExpr 处理 IS TRUE/FALSE 表达式
+func (v *ExtractVisitor) handleIsTruthExpr(node *ast.IsTruthExpr) {
+	if node.Expr != nil {
+		node.Expr.Accept(v)
+		v.builder.WriteString(" ")
+	}
+
+	v.builder.WriteString("IS ")
+	if node.Not {
+		v.builder.WriteString("NOT ")
+	}
+
+	if node.True > 0 {
+		v.builder.WriteString("TRUE")
+	} else {
+		v.builder.WriteString("FALSE")
 	}
 }
 

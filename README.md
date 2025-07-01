@@ -31,67 +31,12 @@ sql-extractor 是一个高性能的 SQL 解析和转换工具，它可以将 SQL
 - Go 1.23 或更高版本
 - 依赖包：
   - github.com/pingcap/tidb/pkg/parser
-  - github.com/kydance/ziwi
+  - github.com/samber/lo
 
 ## 安装
 
 ```bash
-go install github.com/kydance/sql-extractor@latest
-```
-
-## 快速开始
-
-### 基础用法
-
-```go
-package main
-
-import (
-    "fmt"
-    "log"
-    sqlextractor "github.com/kydance/sql-extractor"
-)
-
-func main() {
-    // 创建提取器
-    extractor := sqlextractor.NewExtractor(
-        "SELECT * FROM users WHERE age > 18 AND name LIKE 'John%'")
-    
-    // 提取 SQL 信息
-    err := extractor.Extract()
-    if err != nil {
-        log.Fatal(err)
-    }
-    
-    // 获取处理结果
-    fmt.Printf("模板化 SQL: %v\n", extractor.TemplatizedSQL()) // 返回 []string
-    fmt.Printf("参数: %v\n", extractor.Params())              // 返回 [][]any
-    fmt.Printf("表信息: %v\n", extractor.TableInfos())         // 返回 [][]*models.TableInfo
-    fmt.Printf("操作类型: %v\n", extractor.OpType())           // 返回 []models.SQLOpType
-}
-```
-
-### 处理多条 SQL 语句
-
-```go
-sql := `
-    SELECT * FROM users WHERE status = 1;
-    UPDATE orders SET status = 'completed' WHERE id = 1000;
-`
-extractor := sqlextractor.NewExtractor(sql)
-err := extractor.Extract()
-if err != nil {
-    log.Fatal(err)
-}
-
-// 每个切片索引对应一条 SQL 语句的结果
-for i, sql := range extractor.TemplatizedSQL() {
-    fmt.Printf("SQL %d:\n", i+1)
-    fmt.Printf("  模板: %s\n", sql)
-    fmt.Printf("  参数: %v\n", extractor.Params()[i])
-    fmt.Printf("  表信息: %v\n", extractor.TableInfos()[i])
-    fmt.Printf("  操作类型: %v\n", extractor.OpType()[i])
-}
+go install github.com/kydenul/sql-extractor@latest
 ```
 
 ## API 文档
@@ -105,29 +50,38 @@ type Extractor struct {
     // 包含已过滤或未导出的字段
 }
 
-// NewExtractor 创建新的提取器
-func NewExtractor(sql string) *Extractor
+// RawSQL returns the raw SQL.
+func (e *Extractor) RawSQL() string 
 
-// Extract 提取 SQL 信息
-func (e *Extractor) Extract() error
+// SetRawSQL sets the raw SQL.
+func (e *Extractor) SetRawSQL(sql string) 
 
-// RawSQL 获取原始 SQL
-func (e *Extractor) RawSQL() string
+// TemplatizedSQL returns the templatized SQL.
+func (e *Extractor) TemplatizedSQL() []string 
 
-// SetRawSQL 设置原始 SQL
-func (e *Extractor) SetRawSQL(sql string)
+// Params returns the parameters.
+func (e *Extractor) Params() [][]any 
 
-// TemplatizedSQL 获取模板化后的 SQL 列表
-func (e *Extractor) TemplatizedSQL() []string
+// TableInfos returns the table infos.
+func (e *Extractor) TableInfos() [][]*models.TableInfo 
 
-// Params 获取提取的参数列表
-func (e *Extractor) Params() [][]any
+// OpType returns the operation type.
+func (e *Extractor) OpType() []models.SQLOpType 
 
-// TableInfos 获取表信息列表
-func (e *Extractor) TableInfos() [][]*models.TableInfo
+// doHash calculates the hash of the templatized SQL.
+func (e *Extractor) doHash(fn ...func([]byte) string) 
 
-// OpType 获取 SQL 操作类型列表
-func (e *Extractor) OpType() []models.SQLOpType
+// TemplatizedSQLHash returns the hash of the templatized SQL.
+//
+// Default hash function is sha256.
+func (e *Extractor) TemplatizedSQLHash(fn ...func([]byte) string) []string 
+
+// HasParamMarker returns whether the SQLs contains parameter markers.
+func (e *Extractor) HasParamMarker() []bool 
+
+// Extract extracts information from the raw SQL string. It extracts the templatized
+// SQL, parameters, table information, and operation type.
+func (e *Extractor) Extract() (err error) 
 ```
 
 ### TableInfo
@@ -136,8 +90,11 @@ func (e *Extractor) OpType() []models.SQLOpType
 
 ```go
 type TableInfo struct {
-    Schema    string // 数据库 schema
-    TableName string // 表名
+    templatizedSchema    string // templated schema, e.g. db_?
+    templatizedTableName string // templated table name, e.g. tb_?
+    
+    schema    string // original schema, e.g. db_23
+    tableName string // original table name, e.g. tb_10
 }
 ```
 
