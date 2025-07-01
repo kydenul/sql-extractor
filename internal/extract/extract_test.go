@@ -3436,3 +3436,84 @@ func TestParamMarkerExpr(t *testing.T) {
 	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "logs", "", "logs")}}, tableInfos)
 	as.Equal([]bool{true}, pms)
 }
+
+func TestIsTruthExpr(t *testing.T) {
+	t.Parallel()
+	as := assert.New(t)
+	extractor := NewExtractor()
+
+	// Test with a simple truth expression
+	sql := "SELECT column_name FROM table_name WHERE some_condition IS TRUE;"
+	template, tableInfos, params, op, pms, err := extractor.Extract(sql)
+	as.Nil(err)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+	as.Equal(
+		[]string{"SELECT column_name FROM table_name WHERE some_condition IS TRUE"},
+		template,
+	)
+	as.Equal([][]any{{}}, params)
+	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "table_name", "", "table_name")}}, tableInfos)
+	as.Equal([]bool{false}, pms)
+
+	// Test with a complex truth expression
+	sql = "SELECT * FROM orders WHERE status IS TRUE AND total > 1000 OR customer_id IS NULL;"
+	template, tableInfos, params, op, pms, err = extractor.Extract(sql)
+	as.Nil(err)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+	as.Equal(
+		[]string{"SELECT * FROM orders WHERE status IS TRUE and total gt ? or customer_id IS NULL"},
+		template,
+	)
+	as.Equal([][]any{{int64(1000)}}, params)
+	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "orders", "", "orders")}}, tableInfos)
+	as.Equal([]bool{false}, pms)
+
+	// Test with a truth expression in a subquery
+	sql = `SELECT * FROM users WHERE id IN (SELECT user_id FROM orders WHERE is_active IS TRUE);`
+	template, tableInfos, params, op, pms, err = extractor.Extract(sql)
+	as.Nil(err)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+	as.Equal(
+		[]string{"SELECT * FROM users WHERE id IN ((SELECT user_id FROM orders WHERE is_active IS TRUE))"},
+		template,
+	)
+	as.Equal([][]any{{}}, params)
+	as.Equal([][]*models.TableInfo{
+		{
+			models.NewTableInfo("", "users", "", "users"),
+			models.NewTableInfo("", "orders", "", "orders"),
+		},
+	}, tableInfos)
+	as.Equal([]bool{false}, pms)
+
+	// Test with a truth expression in a JOIN condition
+	sql = `SELECT u.*, o.* FROM users u JOIN orders o ON u.id = o.user_id WHERE o.is_paid IS TRUE;`
+	template, tableInfos, params, op, pms, err = extractor.Extract(sql)
+	as.Nil(err)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+	as.Equal(
+		[]string{"SELECT u.*, o.* FROM users AS u CROSS JOIN orders AS o ON u.id eq o.user_id WHERE o.is_paid IS TRUE"},
+		template,
+	)
+	as.Equal([][]any{{}}, params)
+	as.Equal([][]*models.TableInfo{
+		{
+			models.NewTableInfo("", "users", "", "users"),
+			models.NewTableInfo("", "orders", "", "orders"),
+		},
+	}, tableInfos)
+	as.Equal([]bool{false}, pms)
+
+	// Test
+	sql = "SELECT * FROM orders WHERE status IS TRUE and bCard IS FALSE AND total > 1000 OR customer_id IS NULL;"
+	template, tableInfos, params, op, pms, err = extractor.Extract(sql)
+	as.Nil(err)
+	as.Equal([]models.SQLOpType{models.SQLOperationSelect}, op)
+	as.Equal(
+		[]string{"SELECT * FROM orders WHERE status IS TRUE and bCard IS FALSE and total gt ? or customer_id IS NULL"},
+		template,
+	)
+	as.Equal([][]any{{int64(1000)}}, params)
+	as.Equal([][]*models.TableInfo{{models.NewTableInfo("", "orders", "", "orders")}}, tableInfos)
+	as.Equal([]bool{false}, pms)
+}
